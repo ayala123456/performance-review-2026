@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Review 2026 - Timeline Calendar</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+
+        .calendar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #1a73e8;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .filters {
+            display: flex;
+            gap: 20px;
+            padding: 20px 30px;
+            background: #e8f0fe;
+            border-bottom: 2px solid #1a73e8;
+        }
+
+        .filter-group {
+            flex: 1;
+        }
+
+        .filter-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #1a73e8;
+            font-size: 14px;
+        }
+
+        .filter-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .calendar {
+            padding: 30px;
+        }
+
+        .week-row {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #d1d5db;
+            border-left: 1px solid #d1d5db;
+            border-right: 1px solid #d1d5db;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .week-row:first-of-type {
+            border-top: 1px solid #d1d5db;
+        }
+
+        .calendar-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border-top: 1px solid #d1d5db;
+        }
+
+        .day-headers {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #d1d5db;
+            border: 1px solid #d1d5db;
+        }
+
+        .day-header {
+            background: #f3f4f6;
+            padding: 15px;
+            text-align: center;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 10px;
+            position: relative;
+        }
+
+        .calendar-day.empty {
+            background: #f9fafb;
+        }
+
+        .day-number {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .event {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 11px;
+            line-height: 1.4;
+            font-weight: 600;
+        }
+        .event.phase-preparation {
+            background: #e9d5ff;
+            border-left: 3px solid #9333ea;
+            color: #581c87;
+        }
+
+        /* Phase 2: Kickoff Events - Blue */
+        .event.phase-kickoff {
+            background: #dbeafe;
+            border-left: 3px solid #2563eb;
+            color: #1e3a8a;
+        }
+
+        /* Phase 3: Performance Meetings - Green */
+        .event.phase-meetings {
+            background: #d1fae5;
+            border-left: 3px solid #10b981;
+            color: #065f46;
+        }
+
+        /* Phase 4: Analysis & Results - Orange */
+        .event.phase-analysis {
+            background: #fed7aa;
+            border-left: 3px solid #f97316;
+            color: #7c2d12;
+        }
+
+        /* External Events - Pink */
+        .event.external-event {
+            background: #fce7f3;
+            border-left: 3px solid #ec4899;
+            color: #831843;
+        }
+
+        /* Company Kickoff - Pink/Magenta */
+        .event.company-kickoff {
+            background: #fce7f3;
+            border-left: 3px solid #ec4899;
+            color: #831843;
+        }
+
+        /* Google Calendar style for multi-day events */
+        .calendar-week {
+            position: relative;
+        }
+
+        .multi-day-bar {
+            position: absolute;
+            height: 24px;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 10;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            transition: box-shadow 0.2s;
+        }
+
+        .multi-day-bar:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 20;
+        }
+
+        .multi-day-bar.phase-preparation {
+            background: #e9d5ff;
+            border-left: 3px solid #9333ea;
+            color: #581c87;
+        }
+
+        .multi-day-bar.phase-kickoff {
+            background: #dbeafe;
+            border-left: 3px solid #2563eb;
+            color: #1e3a8a;
+        }
+
+        .multi-day-bar.phase-meetings {
+            background: #d1fae5;
+            border-left: 3px solid #10b981;
+            color: #065f46;
+        }
+
+        .multi-day-bar.phase-analysis {
+            background: #fed7aa;
+            border-left: 3px solid #f97316;
+            color: #7c2d12;
+        }
+
+        .multi-day-bar.external-event {
+            background: #fce7f3;
+            border-left: 3px solid #ec4899;
+            color: #831843;
+        }
+
+        .multi-day-bar.company-kickoff {
+            background: #fce7f3;
+            border-left: 3px solid #ec4899;
+            color: #831843;
+        }
+
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .event-time {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        .legend {
+            display: flex;
+            gap: 30px;
+            padding: 20px 30px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+
+        .news-section {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 20px 30px;
+            margin: 20px 30px;
+            border-radius: 8px;
+        }
+
+        .news-section h3 {
+            color: #1e40af;
+            font-size: 18px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .news-section p {
+            color: #1e3a8a;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .events-list {
+            padding: 30px;
+            background: #f9fafb;
+        }
+
+        .events-list h3 {
+            color: #1f2937;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .events-list-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .event-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .event-item.phase-preparation {
+            border-left-color: #9333ea;
+        }
+
+        .event-item.phase-kickoff {
+            border-left-color: #2563eb;
+        }
+
+        .event-item.phase-meetings {
+            border-left-color: #10b981;
+        }
+
+        .event-item.phase-analysis {
+            border-left-color: #f97316;
+        }
+
+        .event-item.external-event {
+            border-left-color: #ec4899;
+        }
+
+        .event-item.company-kickoff {
+            border-left-color: #ec4899;
+        }
+
+        .event-item-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .event-item-date {
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .month-section {
+            margin-bottom: 40px;
+        }
+
+        .month-title {
+            background: #1a73e8;
+            color: white;
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border-left: 3px solid;
+        }
+
+        .legend-color.preparation {
+            background: #e9d5ff;
+            border-left-color: #9333ea;
+        }
+
+        .legend-color.kickoff {
+            background: #dbeafe;
+            border-left-color: #2563eb;
+        }
+
+        .legend-color.meetings {
+            background: #d1fae5;
+            border-left-color: #10b981;
+        }
+
+        .legend-color.analysis {
+            background: #fed7aa;
+            border-left-color: #f97316;
+        }
+
+        .legend-color.external {
+            background: #fce7f3;
+            border-left-color: #ec4899;
+        }
+
+        .legend-color.company {
+            background: #fce7f3;
+            border-left-color: #ec4899;
+        }
+
+        @media (max-width: 768px) {
+            .calendar-grid {
+                font-size: 12px;
+            }
+            
+            .calendar-day {
+                min-height: 100px;
+                padding: 5px;
+            }
+
+            .event {
+                font-size: 10px;
+                padding: 5px;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calendar-container">
+        <div class="header">
+            <h1>Performance Review 2026 Roadmap</h1>
+            <p>Working Gantt - January - February Timeline</p>
+        </div>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Year</label>
+                <select id="yearFilter">
+                    <option value="2026">2026</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="news-section">
+            <h3>🎯 New This Year: 360° Feedback Approach</h3>
+            <p>This year, we are adopting a 360° review approach that encourages self-reflection and open, two-way feedback between employees and managers, enabling more thoughtful and meaningful discussions.</p>
+        </div>
+
+        <div class="calendar">
+            <div class="month-section">
+                <div class="month-title">January 2026</div>
+                <div class="calendar-grid" id="calendarGridJan">
+                    <!-- January calendar will be generated here -->
+                </div>
+            </div>
+            
+            <div class="month-section">
+                <div class="month-title">February 2026</div>
+                <div class="calendar-grid" id="calendarGridFeb">
+                    <!-- February calendar will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="events-list">
+            <h3>📅 Timeline Events</h3>
+            <div class="events-list-container" id="eventsList">
+                <!-- Events list will be generated here -->
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color preparation"></div>
+                <span>Preparation & Planning</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color kickoff"></div>
+                <span>Kickoff Events</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color meetings"></div>
+                <span>Performance Meetings</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color analysis"></div>
+                <span>Analysis & Results</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color company"></div>
+                <span>Company Kickoff</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color external"></div>
+                <span>External Events</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Events data
+        const events = [
+            {
+                startDate: new Date(2026, 0, 2),
+                endDate: new Date(2026, 0, 15),
+                title: "Preparation & Planning",
+                type: "phase-preparation",
+                isMultiDay: true
+            },
+            {
+                startDate: new Date(2026, 0, 6),
+                endDate: new Date(2026, 0, 16),
+                title: "Vegas Convention (Erez & Danny)",
+                type: "external-event",
+                isMultiDay: true
+            },
+            {
+                startDate: new Date(2026, 0, 15),
+                endDate: new Date(2026, 0, 15),
+                title: "Managers Forum - Performance Review Kickoff",
+                type: "phase-kickoff",
+                isMultiDay: false
+            },
+            {
+                startDate: new Date(2026, 0, 20),
+                endDate: new Date(2026, 0, 20),
+                title: "🎯 Kickoff Employees 360° Feedback - HH",
+                type: "phase-kickoff",
+                isMultiDay: false
+            },
+            {
+                startDate: new Date(2026, 0, 15),
+                endDate: new Date(2026, 1, 12),
+                title: "4-Week Performance Meetings Window",
+                type: "phase-meetings",
+                isMultiDay: true
+            },
+            {
+                startDate: new Date(2026, 0, 27),
+                endDate: new Date(2026, 1, 5),
+                title: "Kickoff Company Presentation Preparation",
+                type: "phase-preparation",
+                isMultiDay: true
+            },
+            {
+                startDate: new Date(2026, 1, 9),
+                endDate: new Date(2026, 1, 10),
+                title: "🎉 2026 Kickoff Company",
+                type: "company-kickoff",
+                isMultiDay: true
+            },
+            {
+                startDate: new Date(2026, 1, 15),
+                endDate: new Date(2026, 1, 16),
+                title: "📊 Performance Review Analysis and Results",
+                type: "phase-analysis",
+                isMultiDay: true
+            }
+        ];
+
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        function generateCalendar(year, month, gridId) {
+            const grid = document.getElementById(gridId);
+            grid.innerHTML = '';
+
+            // Add day headers
+            const headersRow = document.createElement('div');
+            headersRow.className = 'day-headers';
+            dayNames.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'day-header';
+                header.textContent = day;
+                headersRow.appendChild(header);
+            });
+            grid.appendChild(headersRow);
+
+            // Get calendar data
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+
+            // Build array of all days including empty slots
+            const allDays = [];
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                allDays.push(null);
+            }
+            for (let day = 1; day <= daysInMonth; day++) {
+                allDays.push(new Date(year, month, day));
+            }
+            
+            // Pad to complete weeks
+            while (allDays.length % 7 !== 0) {
+                allDays.push(null);
+            }
+
+            // Split into weeks
+            const weeks = [];
+            for (let i = 0; i < allDays.length; i += 7) {
+                weeks.push(allDays.slice(i, i + 7));
+            }
+
+            // Render each week
+            weeks.forEach((week, weekIndex) => {
+                const weekRow = document.createElement('div');
+                weekRow.className = 'week-row';
+
+                // Get valid date range for this week
+                const validDays = week.filter(d => d !== null);
+                const weekStart = validDays[0];
+                const weekEnd = validDays[validDays.length - 1];
+
+                // Find multi-day events for this week
+                const weekMultiDayEvents = [];
+                if (weekStart && weekEnd) {
+                    events.forEach(event => {
+                        if (!event.isMultiDay) return;
+                        
+                        // Check if event overlaps this week
+                        if (event.endDate >= weekStart && event.startDate <= weekEnd) {
+                            // Calculate visible span in this week
+                            const visibleStart = event.startDate > weekStart ? event.startDate : weekStart;
+                            const visibleEnd = event.endDate < weekEnd ? event.endDate : weekEnd;
+                            
+                            weekMultiDayEvents.push({
+                                ...event,
+                                visibleStart,
+                                visibleEnd
+                            });
+                        }
+                    });
+                }
+
+                // Render day cells
+                week.forEach((date, dayIndex) => {
+                    const dayCell = document.createElement('div');
+                    
+                    if (!date) {
+                        dayCell.className = 'calendar-day empty';
+                        weekRow.appendChild(dayCell);
+                        return;
+                    }
+
+                    dayCell.className = 'calendar-day';
+
+                    // Add padding for multi-day bars
+                    const barPadding = weekMultiDayEvents.length * 28;
+                    if (barPadding > 0) {
+                        dayCell.style.paddingTop = `${barPadding + 5}px`;
+                    }
+
+                    const dayNumber = document.createElement('div');
+                    dayNumber.className = 'day-number';
+                    dayNumber.textContent = date.getDate();
+                    dayCell.appendChild(dayNumber);
+
+                    // Add single-day events
+                    const singleDayEvents = events.filter(event => {
+                        if (event.isMultiDay) return false;
+                        return date.getTime() === event.startDate.getTime();
+                    });
+
+                    singleDayEvents.forEach(event => {
+                        const eventDiv = document.createElement('div');
+                        eventDiv.className = `event ${event.type}`;
+                        eventDiv.textContent = event.title;
+                        dayCell.appendChild(eventDiv);
+                    });
+
+                    weekRow.appendChild(dayCell);
+                });
+
+                // Add multi-day bars to week row
+                weekMultiDayEvents.forEach((event, index) => {
+                    // Find start and end column indices
+                    let startCol = -1;
+                    let endCol = -1;
+                    
+                    week.forEach((date, colIndex) => {
+                        if (!date) return;
+                        
+                        if (startCol === -1 && date >= event.visibleStart) {
+                            startCol = colIndex;
+                        }
+                        if (date <= event.visibleEnd) {
+                            endCol = colIndex;
+                        }
+                    });
+
+                    if (startCol !== -1 && endCol !== -1) {
+                        const bar = document.createElement('div');
+                        bar.className = `multi-day-bar ${event.type}`;
+                        bar.textContent = event.title;
+                        
+                        // Calculate position and width
+                        const cellWidth = 100 / 7;
+                        bar.style.left = `calc(${startCol * cellWidth}% + 1px)`;
+                        bar.style.width = `calc(${(endCol - startCol + 1) * cellWidth}% - 2px)`;
+                        bar.style.top = `${5 + index * 28}px`;
+                        
+                        weekRow.appendChild(bar);
+                    }
+                });
+
+                grid.appendChild(weekRow);
+            });
+        }
+
+        // Function to format date
+        function formatDate(date) {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+        }
+
+        function formatDateRange(startDate, endDate) {
+            if (startDate.getTime() === endDate.getTime()) {
+                return formatDate(startDate);
+            }
+            return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+        }
+
+        // Function to generate events list
+        function generateEventsList() {
+            const listContainer = document.getElementById('eventsList');
+            listContainer.innerHTML = '';
+
+            // Sort events by start date
+            const sortedEvents = [...events].sort((a, b) => a.startDate - b.startDate);
+
+            sortedEvents.forEach(event => {
+                const eventItem = document.createElement('div');
+                eventItem.className = `event-item ${event.type}`;
+
+                const eventTitle = document.createElement('div');
+                eventTitle.className = 'event-item-title';
+                eventTitle.textContent = event.title;
+
+                const eventDate = document.createElement('div');
+                eventDate.className = 'event-item-date';
+                eventDate.textContent = formatDateRange(event.startDate, event.endDate);
+
+                eventItem.appendChild(eventTitle);
+                eventItem.appendChild(eventDate);
+                listContainer.appendChild(eventItem);
+            });
+        }
+
+        // Initial calendar render
+        generateCalendar(2026, 0, 'calendarGridJan'); // January 2026
+        generateCalendar(2026, 1, 'calendarGridFeb'); // February 2026
+        generateEventsList();
+    </script>
+</body>
+</html>
